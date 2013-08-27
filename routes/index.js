@@ -127,6 +127,10 @@ exports.listCharges = function(req, res) {
   });
 };
 
+exports.webhooks = function(req, res) {
+  console.log(req.body);
+};
+
 var findCustomer = function(data, callback) {
   var requestOptions = {
     method: 'GET',

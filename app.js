@@ -44,7 +44,7 @@ app.get('/retrieveCharge', routes.retrieveCharge);
 app.get('/refundCharge', routes.refundCharge);
 app.get('/captureCharge', routes.captureCharge);
 app.post('/listCharges', routes.listCharges);
-app.get('/webhooks', routes.webhooks);
+app.post('/webhooks', routes.webhooks);
 
 http.createServer(app).listen(app.get('port'), function(){
   console.log('Express server listening on port ' + app.get('port'));

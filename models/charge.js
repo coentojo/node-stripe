@@ -1,151 +1,92 @@
 var request = require('request');
+var Stripe = require('../models/stripe');
+var helper = require('../lib/helper.js');
 
 var Charge = module.exports = {};
-
-var Stripe = require('../models/stripe');
-
 Charge.apiUrl = Stripe.apiUrl + "/charges";
-  
-Charge.create = function(data, callback) {
-  var charge = Charge.serializeCharge(data.amount, data.currency, data.id, data.card, data.description, data.capture, data.fee);
-  var accessToken = data.access_token || Stripe.secretApiKey;
-  console.log(charge);
 
-  var requestOptions = {
-    method: "POST",
-    json: true,
-    headers: {
-      "Authorization": "Bearer " + accessToken
-    },
-    form: charge,
-    uri: Charge.apiUrl
-  };
+// data: object containing attributes for Charge object
+Charge.create = function(data, access_token, callback) {
+  access_token = (access_token === undefined) ? Stripe.secretApiKey : access_token;
+  var options = helper.requestOptions("POST", access_token, data, Charge.apiUrl);
 
-  request(requestOptions, function(error, response, body) {
+  request(options, function(error, response, body) {
     callback(error, response, body);
   });   
 };
 
+// id: charge_id
 Charge.retrieve = function(id, callback) {
-  var extra = "/" + id;
-  var requestOptions = {
-    method: "GET",
-    json: true,
-    headers: {
-      "Authorization": "Bearer " + Stripe.secretApiKey
-    },
-    uri: Charge.apiUrl + extra
-  };
+  var url = Charge.apiUrl + "/" + id;
+  var options = helper.requestOptions("GET", Stripe.secretApiKey, {}, url);
 
-  request(requestOptions, function(error, response, body) {
+  request(options, function(error, response, body) {
     callback(error, response, body);
   });   
 };
 
+// id: charge_id
+// amount: amount to refund
 Charge.refund = function(id, amount, callback) {
-  var extra = "/" + id + "/refund";
-  var requestOptions = {
-    method: "POST",
-    json: true,
-    headers: {
-      "Authorization": "Bearer " + Stripe.secretApiKey
-    },
-    form: {
-      amount: amount
-    },
-    uri: Charge.apiUrl + extra
-  };
+  var form = { amount: amount };
+  var url = Charge.apiUrl + "/" + id + "/refund";
 
-  if(!amount) {
-    delete requestOptions.form;
-  }
+  var options = helper.requestOptions("POST", Stripe.secretApiKey, form, url);
 
-  request(requestOptions, function(error, response, body) {
+  if(!amount) delete options.form;
+
+  request(options, function(error, response, body) {
     callback(error, response, body);
   });  
 };
 
+// id: charge_id
+// amount: amount to capture
 Charge.capture = function(id, amount, callback) {
-  var extra = "/" + id + "/capture";
-  var requestOptions = {
-    method: "POST",
-    json: true,
-    headers: {
-      "Authorization": "Bearer " + Stripe.secretApiKey
-    },
-    form: {
-      amount: amount
-    },
-    uri: Charge.apiUrl + extra
-  };
+  var url = Charge.apiUrl + "/" + id + "/capture";
+  var form = { amount: amount };
 
-  if(!amount) {
-    delete requestOptions.form;
-  }
+  var options = helper.requestOptions("POST", Stripe.secretApiKey, form, url);
 
-  request(requestOptions, function(error, response, body) {
+  if(!amount) delete options.form;
+
+  request(options, function(error, response, body) {
     callback(error, response, body);
   });  
 };
 
+// count: number of charges to retrieve
+// offset: an integer offset the list of charges
+// customer: customer_id of customer for which you are looking up charges
 Charge.listAll = function(count, customer, offset, callback) {
-   var requestOptions = {
-    method: "GET",
-    json: true,
-    headers: {
-      "Authorization": "Bearer " + Stripe.secretApiKey
-    },
-    form: {
-      count: parseInt(count),
-      customer: customer,
-      offset: offset
-    },
-    uri: Charge.apiUrl
+  var form = {
+    count: parseInt(count),
+    customer: customer,
+    offset: offset
   };
 
-  if(!count) {
-    delete requestOptions.form.count;
-  }
-  if(!customer) {
-    delete requestOptions.form.customer;
-  }
-  if(!offset) {
-    delete requestOptions.form.offset;
-  }
-  console.log(requestOptions);
-  request(requestOptions, function(error, response, body) {
+  var options = helper.requestOptions("GET", Stripe.secretApiKey, form, Charge.apiUrl);
+
+  if(!count) delete options.form.count;
+  if(!customer) delete options.form.customer;
+  if(!offset) delete options.form.offset;
+
+  request(options, function(error, response, body) {
     callback(error, response, body);
   });   
-}
-
-
-Charge.serializeCharge = function(amount, currency, customer, card, description, capture, applicationFee) {
-  currency = currency || "usd";
-  currency.toLowerCase();
-  capture = (typeof capture === "boolean") ? capture : false;
-
-  var charge = {
-    amount: amount,
-    currency: currency,
-    customer: customer,
-    card: card,
-    capture: capture,
-    application_fee: applicationFee,
-    description: description
-  };
-
-  if(typeof customer === "undefined"){
-    delete charge.customer;
-  } 
-  if(typeof card === "undefined"){
-    delete charge.card;
-  }
-  if(typeof description === "undefined") {
-    delete charge.description;
-  }
-  if(typeof applicationFee === "undefined" || applicationFee === "") {
-    delete charge.application_fee;
-  }
-
-  return charge;
 };
+
+// Charge update dispute - - https://stripe.com/docs/api#update_dispute
+// charge_id
+// data = {
+//   evidence: text body
+// }
+Charge.updateDispute = function(charge_id, data, callback) {
+  var url = Charge.apiUrl + "/" + charge_id + "/dispute";
+  var options = helper.requestOptions("POST", Stripe.secretApiKey, data, url);
+  request(options, function(error, response, body) {
+    callback(error, response, body);
+  });
+};
+
+
